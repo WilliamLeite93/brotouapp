@@ -50,6 +50,8 @@ export default function Admin() {
   const [secao, setSecao] = useState('dashboard')
   const [busca, setBusca] = useState('')
   const [savingPlanta, setSavingPlanta] = useState(false)
+  const [savingEspecie, setSavingEspecie] = useState(false)
+  const [especieEditando, setEspecieEditando] = useState(null)
   const [acaoInteracao, setAcaoInteracao] = useState(null)
   const [formPlanta, setFormPlanta] = useState({
     apelido: '',
@@ -59,11 +61,19 @@ export default function Admin() {
     urlFoto: '',
     disponivelParaAdocao: false,
   })
+  const [formEspecie, setFormEspecie] = useState({
+    nomeComum: '',
+    nomeCientifico: '',
+    urlFoto: '',
+    dicaRega: '',
+    dicaLuz: '',
+    dificuldade: 'FACIL',
+  })
 
   const { data: dashRes, loading: loadingDash, refetch: refDash } = useApi(() => adminApi.dashboard(), [])
   const { data: usuariosRes } = useApi(() => adminApi.listarUsuarios(), [])
   const { data: plantasRes, loading: loadingPlantas, refetch: refPlantas } = useApi(() => adminApi.listarPlantas(), [])
-  const { data: especiesRes } = useApi(() => especiesApi.listar(), [])
+  const { data: especiesRes, refetch: refEspecies } = useApi(() => especiesApi.listar(), [])
   const { data: interacoesRes, loading: loadingInteracoes, refetch: refInteracoes } = useApi(() => adocoesApi.listar({}, { auth: 'admin' }), [])
 
   const dash = dashRes?.dados || {}
@@ -103,6 +113,16 @@ export default function Admin() {
     })
   }, [interacoes, busca])
 
+  const especiesFiltradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase()
+    if (!termo) return especies
+    return especies.filter((e) => (
+      e.nomeComum?.toLowerCase().includes(termo) ||
+      e.nomeCientifico?.toLowerCase().includes(termo) ||
+      e.dificuldade?.toLowerCase().includes(termo)
+    ))
+  }, [especies, busca])
+
   const handleLogout = () => {
     logoutAdmin()
     navigate('/')
@@ -132,6 +152,61 @@ export default function Admin() {
       toast('Erro: ' + err.message)
     } finally {
       setSavingPlanta(false)
+    }
+  }
+
+  const limparFormEspecie = () => {
+    setEspecieEditando(null)
+    setFormEspecie({
+      nomeComum: '',
+      nomeCientifico: '',
+      urlFoto: '',
+      dicaRega: '',
+      dicaLuz: '',
+      dificuldade: 'FACIL',
+    })
+  }
+
+  const editarEspecie = (especie) => {
+    setEspecieEditando(especie.id)
+    setFormEspecie({
+      nomeComum: especie.nomeComum || '',
+      nomeCientifico: especie.nomeCientifico || '',
+      urlFoto: especie.urlFoto || '',
+      dicaRega: especie.dicaRega || '',
+      dicaLuz: especie.dicaLuz || '',
+      dificuldade: especie.dificuldade || 'FACIL',
+    })
+  }
+
+  const handleSalvarEspecie = async () => {
+    if (!formEspecie.nomeComum || !formEspecie.nomeCientifico || !formEspecie.dicaRega || !formEspecie.dicaLuz) {
+      toast('Preencha os campos obrigatórios da espécie.')
+      return
+    }
+
+    setSavingEspecie(true)
+    try {
+      if (especieEditando) {
+        await especiesApi.atualizar(especieEditando, {
+          ...formEspecie,
+          urlFoto: formEspecie.urlFoto.trim(),
+        })
+        toast('Espécie atualizada com sucesso.')
+      } else {
+        await especiesApi.criar({
+          ...formEspecie,
+          urlFoto: formEspecie.urlFoto.trim(),
+        })
+        toast('Espécie cadastrada com sucesso.')
+      }
+      limparFormEspecie()
+      refEspecies()
+      refDash()
+    } catch (err) {
+      toast('Erro: ' + err.message)
+    } finally {
+      setSavingEspecie(false)
     }
   }
 
@@ -180,6 +255,9 @@ export default function Admin() {
       <>
         <div className="adm-page-hd">
           <div><h1>Dashboard</h1><p>Visão geral da plataforma com gráficos em tempo real</p></div>
+          <button type="button" className="adm-btn adm-btn-primary" onClick={() => setSecao('especies')}>
+            Gerenciar espécies
+          </button>
         </div>
 
         {loadingDash ? (
@@ -310,6 +388,9 @@ export default function Admin() {
       <>
         <div className="adm-page-hd">
           <div><h1>Itens / Produtos</h1><p>Listagem e cadastro do item principal do sistema</p></div>
+          <button type="button" className="adm-btn adm-btn-ghost" onClick={() => setSecao('especies')}>
+            Editar espécies
+          </button>
         </div>
 
         <div className="adm-actions-panel">
@@ -369,6 +450,64 @@ export default function Admin() {
               </tbody>
             </table>
           )}
+        </div>
+      </>
+    )
+  }
+
+  const renderEspecies = () => {
+    return (
+      <>
+        <div className="adm-page-hd">
+          <div><h1>Espécies</h1><p>Cadastro e edição das espécies exibidas no catálogo</p></div>
+        </div>
+
+        <div className="adm-actions-panel">
+          <h3>{especieEditando ? 'Editar espécie' : 'Cadastrar nova espécie'}</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,minmax(0,1fr))', gap: 10, marginBottom: 10 }}>
+            <input className="adm-input" placeholder="Nome comum *" value={formEspecie.nomeComum} onChange={e => setFormEspecie(p => ({ ...p, nomeComum: e.target.value }))} />
+            <input className="adm-input" placeholder="Nome científico *" value={formEspecie.nomeCientifico} onChange={e => setFormEspecie(p => ({ ...p, nomeCientifico: e.target.value }))} />
+            <select className="adm-input" value={formEspecie.dificuldade} onChange={e => setFormEspecie(p => ({ ...p, dificuldade: e.target.value }))}>
+              <option value="FACIL">Fácil</option>
+              <option value="MEDIO">Médio</option>
+              <option value="DIFICIL">Difícil</option>
+            </select>
+            <input className="adm-input" placeholder="URL da foto" value={formEspecie.urlFoto} onChange={e => setFormEspecie(p => ({ ...p, urlFoto: e.target.value }))} />
+            <input className="adm-input" placeholder="Dica de rega *" value={formEspecie.dicaRega} onChange={e => setFormEspecie(p => ({ ...p, dicaRega: e.target.value }))} />
+            <input className="adm-input" placeholder="Dica de luz *" value={formEspecie.dicaLuz} onChange={e => setFormEspecie(p => ({ ...p, dicaLuz: e.target.value }))} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button className="adm-btn adm-btn-primary" onClick={handleSalvarEspecie} disabled={savingEspecie}>
+              {savingEspecie ? 'Salvando...' : especieEditando ? 'Salvar alterações' : 'Cadastrar espécie'}
+            </button>
+            {especieEditando && (
+              <button className="adm-btn adm-btn-ghost" onClick={limparFormEspecie}>Cancelar edição</button>
+            )}
+          </div>
+        </div>
+
+        <div className="adm-table-wrap">
+          <div className="adm-table-hd">
+            <h3>Espécies cadastradas ({especiesFiltradas.length})</h3>
+          </div>
+          <table className="adm-table">
+            <thead>
+              <tr><th>Espécie</th><th>Foto</th><th>Dificuldade</th><th>Plantas</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              {especiesFiltradas.map((e) => (
+                <tr key={e.id}>
+                  <td>{e.nomeComum}<br /><span style={{ color: 'var(--adm-muted)', fontSize: 12 }}>{e.nomeCientifico}</span></td>
+                  <td style={{ maxWidth: 280, color: 'var(--adm-muted)', fontSize: 12, overflowWrap: 'anywhere' }}>{e.urlFoto || 'Sem foto cadastrada'}</td>
+                  <td><span className="adm-status active">{e.dificuldade}</span></td>
+                  <td>{e._count?.plantas ?? 0}</td>
+                  <td>
+                    <button className="adm-btn adm-btn-ghost" onClick={() => editarEspecie(e)}>Editar</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </>
     )
@@ -454,6 +593,7 @@ export default function Admin() {
             <div className="adm-sb-label">Visão Geral</div>
             <div className={`adm-nav${secao === 'dashboard' ? ' active' : ''}`} onClick={() => setSecao('dashboard')}>Dashboard</div>
             <div className={`adm-nav${secao === 'plantas' ? ' active' : ''}`} onClick={() => setSecao('plantas')}>Itens / Produtos</div>
+            <div className={`adm-nav${secao === 'especies' ? ' active' : ''}`} onClick={() => setSecao('especies')}>Espécies</div>
             <div className={`adm-nav${secao === 'interacoes' ? ' active' : ''}`} onClick={() => setSecao('interacoes')}>Interações</div>
           </div>
           <div className="adm-sb-bottom">
@@ -471,6 +611,7 @@ export default function Admin() {
           <div className="adm-inner">
             {secao === 'dashboard' && renderDashboard()}
             {secao === 'plantas' && renderPlantas()}
+            {secao === 'especies' && renderEspecies()}
             {secao === 'interacoes' && renderInteracoes()}
           </div>
         </main>

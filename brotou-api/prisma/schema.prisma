@@ -61,6 +61,7 @@ model Especie {
   id             String      @id @default(cuid())
   nomeComum      String      @map("nome_comum")
   nomeCientifico String      @map("nome_cientifico")
+  urlFoto        String?     @map("url_foto")
   dicaRega       String      @map("dica_rega")
   dicaLuz        String      @map("dica_luz")
   dificuldade    Dificuldade

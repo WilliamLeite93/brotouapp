@@ -12,6 +12,8 @@ const FOTOS_ESPECIES = [
   'https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=400&q=80',
 ]
 
+const FOTO_FALLBACK = 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&q=80'
+
 const DIFIC = { FACIL: 'bg-green', MEDIO: 'bg-orange', DIFICIL: 'bg-red' }
 const DIFIC_L = { FACIL: 'Fácil', MEDIO: 'Médio', DIFICIL: 'Difícil' }
 
@@ -56,7 +58,14 @@ export default function Especies() {
           {especies.map((e, i) => (
             <div className="ec" key={e.id}>
               <div className="ec-img">
-                <img src={FOTOS_ESPECIES[i % FOTOS_ESPECIES.length]} alt={e.nomeComum} />
+                <img
+                  src={e.urlFoto || FOTOS_ESPECIES[i % FOTOS_ESPECIES.length] || FOTO_FALLBACK}
+                  alt={e.nomeComum}
+                  onError={ev => {
+                    ev.currentTarget.onerror = null
+                    ev.currentTarget.src = FOTO_FALLBACK
+                  }}
+                />
               </div>
               <div className="ec-body">
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>

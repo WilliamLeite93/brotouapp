@@ -6,6 +6,8 @@ import { useApp } from '../contexts/AppContext'
 import { useApi } from '../hooks/useApi'
 import { plantasApi, especiesApi } from '../services/api'
 
+const FOTO_FALLBACK = 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=500&q=80'
+
 export default function Plantas() {
   const { usuario, toast } = useApp()
   const navigate = useNavigate()
@@ -106,7 +108,14 @@ export default function Plantas() {
           {filtered.map(p => (
             <div className="pc" key={p.id} onClick={() => navigate(`/plantas/${p.id}`)}>
               <div className="pc-img">
-                <img src={p.urlFoto || 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=500&q=80'} alt={p.apelido} />
+                <img
+                  src={p.urlFoto || FOTO_FALLBACK}
+                  alt={p.apelido}
+                  onError={e => {
+                    e.currentTarget.onerror = null
+                    e.currentTarget.src = FOTO_FALLBACK
+                  }}
+                />
                 <div className="pc-badges">
                   {p.disponivelParaAdocao && <span className="badge bg-green">adoção</span>}
                   <span className="badge bg-muted">{DIFIC_LABEL[p.especie?.dificuldade] || ''}</span>

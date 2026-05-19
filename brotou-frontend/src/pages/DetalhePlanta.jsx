@@ -1,9 +1,10 @@
-﻿import { useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import AppShell from '../components/AppShell'
+import Modal from '../components/Modal'
 import { useApp } from '../contexts/AppContext'
 import { useApi } from '../hooks/useApi'
-import { adocoesApi, entradasApi, plantasApi } from '../services/api'
+import { adocoesApi, entradasApi, plantasApi, especiesApi } from '../services/api'
 
 const TIPO_CORES = {
   REGA: { cls: 'ic-water', label: 'Rega', cor: 'var(--blue)' },
@@ -23,14 +24,21 @@ export default function DetalhePlanta() {
   const [tabTipo, setTabTipo] = useState('TODOS')
   const [formEntrada, setFormEntrada] = useState({ tipo: 'REGA', observacao: '' })
   const [formAdocao, setFormAdocao] = useState({ dataInicio: '', dataFim: '', mensagemCliente: '' })
+  const [formEdicao, setFormEdicao] = useState({ apelido: '', especieId: '', adquiridaEm: '', urlFoto: '', disponivelParaAdocao: false })
+  const [modalEdicaoOpen, setModalEdicaoOpen] = useState(false)
+  const [fotoErro, setFotoErro] = useState(false)
+  const [previewErro, setPreviewErro] = useState(false)
   const [savingEntrada, setSavingEntrada] = useState(false)
   const [savingAdocao, setSavingAdocao] = useState(false)
+  const [savingEdicao, setSavingEdicao] = useState(false)
 
-  const { data: plantaRes, loading } = useApi(() => plantasApi.buscar(id), [id])
+  const { data: plantaRes, loading, refetch: refetchPlanta } = useApi(() => plantasApi.buscar(id), [id])
   const { data: entradasRes, refetch } = useApi(() => entradasApi.listar({ plantaId: id }), [id])
+  const { data: especiesRes } = useApi(() => especiesApi.listar(), [])
 
   const planta = plantaRes?.dados
   const entradas = (entradasRes?.dados || []).filter(e => tabTipo === 'TODOS' || e.tipo === tabTipo)
+  const especies = especiesRes?.dados || []
 
   const isLogado = Boolean(usuario)
   const isOwner = Boolean(usuario?.id && planta?.donoId === usuario.id)
@@ -39,8 +47,54 @@ export default function DetalhePlanta() {
 
   const qtdInteracoes = useMemo(() => (planta?._count?.adocoes || 0), [planta])
 
+  useEffect(() => {
+    setFotoErro(false)
+  }, [planta?.urlFoto])
+
+  useEffect(() => {
+    setPreviewErro(false)
+  }, [formEdicao.urlFoto])
+
   const redirecionarParaLogin = () => {
     navigate('/login', { state: { from: `${location.pathname}${location.search}` } })
+  }
+
+  const abrirEdicao = () => {
+    setFormEdicao({
+      apelido: planta.apelido || '',
+      especieId: planta.especieId || planta.especie?.id || '',
+      adquiridaEm: planta.adquiridaEm ? planta.adquiridaEm.slice(0, 10) : '',
+      urlFoto: planta.urlFoto || '',
+      disponivelParaAdocao: Boolean(planta.disponivelParaAdocao),
+    })
+    setModalEdicaoOpen(true)
+  }
+
+  const handleSalvarEdicao = async () => {
+    if (!isOwner) {
+      toast('Apenas o dono pode editar esta planta.')
+      return
+    }
+
+    if (!formEdicao.apelido || !formEdicao.especieId || !formEdicao.adquiridaEm) {
+      toast('Preencha os campos obrigatórios.')
+      return
+    }
+
+    setSavingEdicao(true)
+    try {
+      await plantasApi.atualizar(id, {
+        ...formEdicao,
+        urlFoto: formEdicao.urlFoto.trim(),
+      })
+      toast('Planta atualizada com sucesso!')
+      setModalEdicaoOpen(false)
+      refetchPlanta()
+    } catch (err) {
+      toast('Erro: ' + err.message)
+    } finally {
+      setSavingEdicao(false)
+    }
   }
 
   const handleRegistrar = async () => {
@@ -131,8 +185,17 @@ export default function DetalhePlanta() {
       <div className="det-layout">
         <div className="det-left">
           <div className="det-main-img">
-            <img src={planta.urlFoto || FOTO_FALLBACK} alt={planta.apelido} />
+            <img
+              src={fotoErro ? FOTO_FALLBACK : (planta.urlFoto || FOTO_FALLBACK)}
+              alt={planta.apelido}
+              onError={() => setFotoErro(true)}
+            />
           </div>
+          {fotoErro && (
+            <div className="photo-error-note">
+              A URL da foto foi salva, mas não carregou como imagem direta.
+            </div>
+          )}
           <div className="info-card">
             <h4>Informações</h4>
             <div className="info-r"><span className="l">Espécie</span><span className="v">{planta.especie?.nomeComum}</span></div>
@@ -158,8 +221,15 @@ export default function DetalhePlanta() {
         </div>
 
         <div className="det-right">
-          <div className="det-plant-name">{planta.apelido}</div>
-          <div className="det-sp">{planta.especie?.nomeCientifico}</div>
+          <div className="det-title-row">
+            <div>
+              <div className="det-plant-name">{planta.apelido}</div>
+              <div className="det-sp">{planta.especie?.nomeCientifico}</div>
+            </div>
+            {isOwner && (
+              <button className="btn btn-ghost btn-sm" onClick={abrirEdicao}>Editar</button>
+            )}
+          </div>
           <div className="det-badges">
             <span className="badge bg-green">{planta.especie?.nomeComum}</span>
             {planta.disponivelParaAdocao && <span className="badge bg-blue">disponível para adoção</span>}
@@ -274,6 +344,59 @@ export default function DetalhePlanta() {
           </div>
         </div>
       </div>
+
+      <Modal open={modalEdicaoOpen} onClose={() => setModalEdicaoOpen(false)} title="Editar planta">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="field">
+            <label>Apelido da planta *</label>
+            <input value={formEdicao.apelido} onChange={e => setFormEdicao(p => ({ ...p, apelido: e.target.value }))} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="field">
+              <label>Espécie *</label>
+              <select value={formEdicao.especieId} onChange={e => setFormEdicao(p => ({ ...p, especieId: e.target.value }))}>
+                <option value="">Selecionar...</option>
+                {especies.map(e => <option key={e.id} value={e.id}>{e.nomeComum}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Data de aquisição *</label>
+              <input type="date" value={formEdicao.adquiridaEm} onChange={e => setFormEdicao(p => ({ ...p, adquiridaEm: e.target.value }))} />
+            </div>
+          </div>
+          <div className="field">
+            <label>URL da foto</label>
+            <input placeholder="https://..." value={formEdicao.urlFoto} onChange={e => setFormEdicao(p => ({ ...p, urlFoto: e.target.value }))} />
+          </div>
+          {formEdicao.urlFoto && (
+            <div className="edit-photo-preview">
+              {previewErro ? (
+                <div className="edit-photo-error">Não foi possível carregar a prévia desta URL.</div>
+              ) : (
+                <img src={formEdicao.urlFoto} alt="Prévia da planta" onError={() => setPreviewErro(true)} />
+              )}
+            </div>
+          )}
+          <div className="field-hint">Use uma URL direta de imagem, como links terminando em .jpg, .png ou .webp.</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--cream)', borderRadius: 'var(--r-md)', padding: 14 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--ink)' }}>Disponível para adoção</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>Outros usuários poderão solicitar cuidado</div>
+            </div>
+            <button
+              type="button"
+              className={`toggle ${formEdicao.disponivelParaAdocao ? 'on' : 'off'}`}
+              onClick={() => setFormEdicao(p => ({ ...p, disponivelParaAdocao: !p.disponivelParaAdocao }))}
+            ><span className="toggle-k" /></button>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+            <button className="btn btn-ghost" onClick={() => setModalEdicaoOpen(false)}>Cancelar</button>
+            <button className="btn btn-primary" onClick={handleSalvarEdicao} disabled={savingEdicao}>
+              {savingEdicao ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </>
   )
 

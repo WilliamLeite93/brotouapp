@@ -16,9 +16,9 @@ const app = express();
 
 const origensPermitidas = [
   "http://localhost:5173",
-  "http://localhost:5174",       // adiciona
+  "http://localhost:5174",       
   "http://127.0.0.1:5173",
-  "http://127.0.0.1:5174",      // adiciona
+  "http://127.0.0.1:5174",     
   process.env.FRONTEND_URL,
   "https://brotouapp.vercel.app",
 ].filter(Boolean);

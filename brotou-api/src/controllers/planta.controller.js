@@ -86,6 +86,21 @@ const criar = async (req, res, next) => {
 // PATCH /plantas/:id
 const atualizar = async (req, res, next) => {
   try {
+    if (req.authTipo === "usuario") {
+      const plantaExistente = await prisma.planta.findUnique({
+        where: { id: req.params.id },
+        select: { donoId: true },
+      });
+
+      if (!plantaExistente) {
+        return res.status(404).json({ status: "erro", mensagem: "Planta não encontrada" });
+      }
+
+      if (plantaExistente.donoId !== req.usuarioId) {
+        return res.status(403).json({ status: "erro", mensagem: "Você só pode editar suas próprias plantas" });
+      }
+    }
+
     const planta = await prisma.planta.update({
       where: { id: req.params.id },
       data: req.body,

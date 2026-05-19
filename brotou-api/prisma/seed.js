@@ -24,11 +24,14 @@ async function main() {
   const especies = await Promise.all([
     prisma.especie.upsert({
       where: { id: "esp_monstera" },
-      update: {},
+      update: {
+        urlFoto: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=500&q=80",
+      },
       create: {
         id: "esp_monstera",
         nomeComum: "Costela-de-Adão",
         nomeCientifico: "Monstera deliciosa",
+        urlFoto: "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=500&q=80",
         dicaRega: "A cada 7 dias, solo levemente úmido",
         dicaLuz: "Luz indireta brilhante, sem sol direto",
         dificuldade: "FACIL",
@@ -36,11 +39,14 @@ async function main() {
     }),
     prisma.especie.upsert({
       where: { id: "esp_cacto" },
-      update: {},
+      update: {
+        urlFoto: "https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=500&q=80",
+      },
       create: {
         id: "esp_cacto",
         nomeComum: "Cacto",
         nomeCientifico: "Cactaceae",
+        urlFoto: "https://images.unsplash.com/photo-1509423350716-97f9360b4e09?w=500&q=80",
         dicaRega: "A cada 21 dias, solo completamente seco",
         dicaLuz: "Sol direto por pelo menos 6 horas",
         dificuldade: "FACIL",
@@ -48,11 +54,14 @@ async function main() {
     }),
     prisma.especie.upsert({
       where: { id: "esp_samambaia" },
-      update: {},
+      update: {
+        urlFoto: "https://images.unsplash.com/photo-1585058178215-33108215e3c8?w=500&q=80",
+      },
       create: {
         id: "esp_samambaia",
         nomeComum: "Samambaia",
         nomeCientifico: "Nephrolepis exaltata",
+        urlFoto: "https://images.unsplash.com/photo-1585058178215-33108215e3c8?w=500&q=80",
         dicaRega: "A cada 2 a 3 dias, manter solo úmido",
         dicaLuz: "Sombra ou luz difusa",
         dificuldade: "MEDIO",
@@ -60,11 +69,14 @@ async function main() {
     }),
     prisma.especie.upsert({
       where: { id: "esp_orquidea" },
-      update: {},
+      update: {
+        urlFoto: "https://images.unsplash.com/photo-1566907225475-877b77ec1d22?w=500&q=80",
+      },
       create: {
         id: "esp_orquidea",
         nomeComum: "Orquídea",
         nomeCientifico: "Orchidaceae",
+        urlFoto: "https://images.unsplash.com/photo-1566907225475-877b77ec1d22?w=500&q=80",
         dicaRega: "A cada 5 a 7 dias, imersão rápida",
         dicaLuz: "Luz indireta, evitar sol direto",
         dificuldade: "DIFICIL",
@@ -72,11 +84,14 @@ async function main() {
     }),
     prisma.especie.upsert({
       where: { id: "esp_pothos" },
-      update: {},
+      update: {
+        urlFoto: "https://images.unsplash.com/photo-1600411832986-5a4477b64a1c?w=500&q=80",
+      },
       create: {
         id: "esp_pothos",
         nomeComum: "Pothos",
         nomeCientifico: "Epipremnum aureum",
+        urlFoto: "https://images.unsplash.com/photo-1600411832986-5a4477b64a1c?w=500&q=80",
         dicaRega: "A cada 7 a 10 dias, solo quase seco",
         dicaLuz: "Baixa a média luminosidade",
         dificuldade: "FACIL",
